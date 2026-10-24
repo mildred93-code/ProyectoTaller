@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
+import LoteForm from '../components/LoteForm';
 
 export default function DashboardPage() {
   const [products, setProducts] = useState([]);
@@ -36,18 +37,23 @@ export default function DashboardPage() {
 
   if (loading) return <div className="p-8 text-center">Cargando inventario...</div>;
 
+  // Nombres de medicamentos que ya existen (para sugerirlos en el formulario)
+  const medicamentos = [...new Set(products.map((p) => p.name))];
+
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-3xl font-bold text-gray-800">Control de Inventario y Lotes - Farmacia</h1>
-          <button 
+          <button
             onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
             className="rounded bg-red-600 px-4 py-2 text-white text-sm font-medium hover:bg-red-700"
           >
             Cerrar Sesión
           </button>
         </div>
+
+        <LoteForm medicamentos={medicamentos} onCreated={fetchProducts} />
 
         <div className="overflow-hidden rounded-lg bg-white shadow-md">
           <table className="w-full border-collapse text-left">
