@@ -1,0 +1,111 @@
+/* Paleta sólida institucional para Farmacia: #94B2FF y #94FFEA (Sin color negro) */
+:root {
+  --brand-blue: #94B2FF;
+  --brand-mint: #94FFEA;
+  --brand-blue-soft: #EEF4FF;
+  --brand-mint-soft: #F0FDFB;
+  --brand-blue-light: #D8E5FF;
+  --brand-mint-light: #D9FFF7;
+  --brand-text: #1E3A5F;
+  --brand-text-medium: #38577A;
+  --brand-text-muted: #6B8BAA;
+  --brand-bg: #F4F8FD;
+  --brand-border: #D8E4F5;
+}
+
+body {
+  background-color: #F4F8FD;
+  color: #1E3A5F;
+}
+
+/* Patrón de puntos decorativo (Dot Matrix) inspirado en las referencias de diseño */
+.dot-pattern-blue {
+  background-image: radial-gradient(#94B2FF 2px, transparent 2px);
+  background-size: 18px 18px;
+}
+
+.dot-pattern-mint {
+  background-image: radial-gradient(#94FFEA 2px, transparent 2px);
+  background-size: 18px 18px;
+}
+
+.dot-pattern-soft {
+  background-image: radial-gradient(#C6D8FF 1.5px, transparent 1.5px);
+  background-size: 16px 16px;
+}
+
+/* Formas orgánicas (Blobs) estilo imagen de referencia */
+.blob-shape-1 {
+  border-radius: 42% 58% 70% 30% / 45% 45% 55% 55%;
+}
+
+.blob-shape-2 {
+  border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%;
+}
+
+.blob-shape-3 {
+  border-radius: 50% 50% 40% 60% / 40% 60% 50% 50%;
+}
+
+/* Scrollbar moderno en tonos pastel */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #F0F5FD;
+}
+::-webkit-scrollbar-thumb {
+  background: #B4CCFE;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94B2FF;
+}
+
+/* Estilos de impresión para reportes oficiales de auditoría */
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #1E3A5F !important;
+    font-size: 11pt !important;
+  }
+  
+  .no-print,
+  nav,
+  header,
+  button,
+  .print-hide {
+    display: none !important;
+  }
+
+  .printable-report-area {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  table {
+    border-collapse: collapse !important;
+    width: 100% !important;
+  }
+
+  th, td {
+    border: 1px solid #D8E4F5 !important;
+    padding: 6px 10px !important;
+  }
+
+  th {
+    background-color: #EEF4FF !important;
+    color: #1E3A5F !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+}
