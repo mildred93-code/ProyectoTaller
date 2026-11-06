@@ -47,6 +47,9 @@ app.post('/api/products', requireAuth, productController.createProduct);
 // Salida de inventario (FEFO): descuenta del lote que vence primero
 app.post('/api/products/exit', requireAuth, productController.exitProduct);
 
+// Historial de movimientos (entradas y salidas)
+app.get('/api/movements', requireAuth, productController.getMovements);
+
 // Ruta de prueba general
 app.get('/', (req, res) => {
   res.json({ message: 'API de Sistema de Farmacia funcionando correctamente 🚀' });

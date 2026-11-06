@@ -29,12 +29,21 @@ class ProductController {
 
   exitProduct = async (req, res) => {
     try {
-      const { name, quantity } = req.body;
+      const { lotId, all } = req.body;
       const userId = req.user ? req.user.id : null;
-      const result = await this.productService.registerExit({ name, quantity }, userId);
+      const result = await this.productService.registerExit({ lotId, all }, userId);
       res.status(200).json({ success: true, data: result });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });
+    }
+  };
+
+  getMovements = async (req, res) => {
+    try {
+      const movements = await this.productService.getMovements(req.query.limit);
+      res.status(200).json({ success: true, data: movements });
+    } catch (error) {
+      res.status(500).json({ success: false, message: error.message });
     }
   };
 }

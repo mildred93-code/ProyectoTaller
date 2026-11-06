@@ -6,6 +6,7 @@ import SalidaForm from '../components/SalidaForm';
 import ExpirationBadge from '../components/ExpirationBadge';
 import MetricsDashboard from '../components/MetricsDashboard';
 import AnalyticsReports from '../components/AnalyticsReports';
+import MovementsHistory from '../components/MovementsHistory';
 import {
   Layers,
   Search,
@@ -34,13 +35,13 @@ export default function DashboardPage() {
   // Usuario activo en sesión
   const [currentUser, setCurrentUser] = useState(null);
 
-  // Pestaña activa ('inventory' | 'metrics' | 'reports')
+  // Pestaña activa ('inventory' | 'movements' | 'metrics' | 'reports')
   const [activeTab, setActiveTab] = useState('inventory');
 
   // Visibilidad del formulario de nuevo lote
   const [showLoteForm, setShowLoteForm] = useState(false);
 
-  // Visibilidad del formulario de salida de inventario (FEFO)
+  // Visibilidad del formulario de retiro de lotes caducados
   const [showSalidaForm, setShowSalidaForm] = useState(false);
 
   // Filtros de la tabla de inventario
@@ -260,7 +261,7 @@ export default function DashboardPage() {
               />
             )}
 
-            {/* Formulario de salida de inventario (FEFO) */}
+            {/* Formulario de retiro de lotes caducados */}
             {showSalidaForm && (
               <SalidaForm
                 products={products}
@@ -391,7 +392,7 @@ export default function DashboardPage() {
                     className="px-5 py-2.5 rounded-full text-xs font-extrabold text-[#1E3A5F] bg-[#94B2FF] hover:bg-[#82A5FF] border border-[#82A5FF] transition-all shadow-sm hover:shadow-card hover:-translate-y-0.5 flex items-center gap-2 whitespace-nowrap"
                   >
                     <Minus className="w-4 h-4 text-[#1E3A5F]" />
-                    <span>Registrar Salida</span>
+                    <span>Retirar Caducados</span>
                   </button>
                 )}
 
@@ -551,6 +552,13 @@ export default function DashboardPage() {
             </div>
 
           </div>
+        )}
+
+        {/* ========================================================
+            PESTAÑA: HISTORIAL DE MOVIMIENTOS (ENTRADAS Y SALIDAS)
+        ======================================================== */}
+        {activeTab === 'movements' && (
+          <MovementsHistory refreshToken={products} />
         )}
 
         {/* ========================================================

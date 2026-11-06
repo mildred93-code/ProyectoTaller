@@ -8,7 +8,8 @@ import {
   LogOut,
   User,
   ShieldCheck,
-  CheckCircle2
+  CheckCircle2,
+  History
 } from 'lucide-react';
 
 export default function Navbar({
@@ -26,7 +27,7 @@ export default function Navbar({
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b-2 border-[#D8E4F5] shadow-card no-print">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          
+
           {/* Logo y Nombre del Sistema */}
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-2xl bg-[#94B2FF] p-2.5 flex items-center justify-center shadow-md">
@@ -67,6 +68,18 @@ export default function Navbar({
             </button>
 
             <button
+              onClick={() => setActiveTab('movements')}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${
+                activeTab === 'movements'
+                  ? 'bg-[#94B2FF] text-[#1E3A5F] shadow-sm'
+                  : 'text-[#456586] hover:text-[#1E3A5F] hover:bg-[#D8E5FF]/60'
+              }`}
+            >
+              <History className="w-4 h-4 text-[#1E3A5F]" />
+              <span>Historial</span>
+            </button>
+
+            <button
               onClick={() => setActiveTab('metrics')}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition-all ${
                 activeTab === 'metrics'
@@ -94,7 +107,7 @@ export default function Navbar({
 
           {/* Acciones Rápidas y Perfil del Usuario */}
           <div className="flex items-center gap-3">
-            
+
             {/* Botón rápido para registrar lote en color sólido #94FFEA */}
             <button
               onClick={onOpenNewLote}
@@ -144,6 +157,18 @@ export default function Navbar({
           >
             <Layers className="w-3.5 h-3.5" />
             <span>Inventario</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('movements')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold ${
+              activeTab === 'movements'
+                ? 'bg-[#94B2FF] text-[#1E3A5F]'
+                : 'text-[#456586]'
+            }`}
+          >
+            <History className="w-3.5 h-3.5" />
+            <span>Historial</span>
           </button>
 
           <button

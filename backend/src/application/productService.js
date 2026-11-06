@@ -68,24 +68,27 @@ class ProductService {
     };
   }
 
-  // Valida y limpia los datos del formulario de salida
+  // Valida el retiro de caducados: o se retira todo (all) o un lote concreto (lotId)
   validateExit(data) {
-    const name = String(data.name ?? '').trim();
-    const quantity = Number(data.quantity);
-
-    if (!name) {
-      throw new Error('El nombre del medicamento es obligatorio');
+    if (data.all === true) return { all: true, lotId: null };
+    const lotId = Number(data.lotId);
+    if (!Number.isInteger(lotId) || lotId <= 0) {
+      throw new Error('Elige el lote caducado que quieres retirar');
     }
-    if (!Number.isInteger(quantity) || quantity <= 0) {
-      throw new Error('La cantidad debe ser un número entero mayor a 0');
-    }
-    return { name, quantity };
+    return { all: false, lotId };
   }
 
-  // Registra una salida de inventario (FEFO) y devuelve de qué lotes se descontó
+  // Retira del inventario lotes caducados (salida) y devuelve cuáles se retiraron
   async registerExit(data, userId = null) {
     const clean = this.validateExit(data);
-    return this.productRepositoryPort.registerExit(clean.name, clean.quantity, userId);
+    return this.productRepositoryPort.registerExit(clean, userId);
+  }
+
+  // Historial de movimientos. El límite se acota para no devolver tablas enormes por accidente.
+  async getMovements(limit) {
+    const parsed = Number.parseInt(limit, 10);
+    const safeLimit = Number.isInteger(parsed) && parsed > 0 ? Math.min(parsed, 500) : 200;
+    return this.productRepositoryPort.findMovements(safeLimit);
   }
 }
 
