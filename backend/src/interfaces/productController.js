@@ -15,7 +15,12 @@ class ProductController {
   createProduct = async (req, res) => {
     try {
       const { name, batchNumber, stock, expirationDate } = req.body;
-      const product = await this.productService.createProduct({ name, batchNumber, stock, expirationDate });
+      // req.user lo deja el middleware de autenticación: así queda registrado quién dio la entrada
+      const userId = req.user ? req.user.id : null;
+      const product = await this.productService.createProduct(
+        { name, batchNumber, stock, expirationDate },
+        userId
+      );
       res.status(201).json({ success: true, data: product });
     } catch (error) {
       res.status(400).json({ success: false, message: error.message });

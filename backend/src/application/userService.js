@@ -1,4 +1,5 @@
 const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../domain/user');
 
 class UserService {
@@ -17,10 +18,18 @@ class UserService {
       throw new Error('Credenciales inválidas');
     }
 
+    // Token firmado: el servidor lo reconoce en cada petición sin consultar la base
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
     return {
       id: user.id,
       email: user.email,
-      role: user.role
+      role: user.role,
+      token
     };
   }
 

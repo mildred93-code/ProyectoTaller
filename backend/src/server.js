@@ -11,6 +11,14 @@ const ProductRepositoryAdapter = require('./infrastructure/productRepositoryAdap
 const ProductService = require('./application/productService');
 const ProductController = require('./interfaces/productController');
 
+const { requireAuth, requireRole } = require('./interfaces/authMiddleware');
+
+// Sin clave secreta no se pueden firmar ni validar sesiones: mejor no arrancar
+if (!process.env.JWT_SECRET) {
+  console.error('Falta JWT_SECRET en el archivo .env. El servidor no puede iniciar.');
+  process.exit(1);
+}
+
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -30,11 +38,12 @@ const productController = new ProductController(productService);
 
 // Rutas de Usuarios / Autenticación
 app.post('/api/auth/login', userController.login);
-app.post('/api/auth/register', userController.register);
+// Crear usuarios: solo un administrador con sesión iniciada
+app.post('/api/auth/register', requireAuth, requireRole('admin'), userController.register);
 
-// Rutas de Productos e Inventario (Lotes y Caducidades)
-app.get('/api/products', productController.getProducts);
-app.post('/api/products', productController.createProduct);
+// Rutas de Productos e Inventario (Lotes y Caducidades): requieren sesión
+app.get('/api/products', requireAuth, productController.getProducts);
+app.post('/api/products', requireAuth, productController.createProduct);
 
 // Ruta de prueba general
 app.get('/', (req, res) => {
