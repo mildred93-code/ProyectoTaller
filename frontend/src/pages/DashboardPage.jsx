@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import axiosClient from '../api/axiosClient';
 import Navbar from '../components/Navbar';
 import LoteForm from '../components/LoteForm';
+import SalidaForm from '../components/SalidaForm';
 import ExpirationBadge from '../components/ExpirationBadge';
 import MetricsDashboard from '../components/MetricsDashboard';
 import AnalyticsReports from '../components/AnalyticsReports';
@@ -20,7 +21,8 @@ import {
   Calendar,
   CheckCircle2,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  Minus
 } from 'lucide-react';
 
 export default function DashboardPage() {
@@ -28,7 +30,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Usuario activo en sesión
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -37,6 +39,9 @@ export default function DashboardPage() {
 
   // Visibilidad del formulario de nuevo lote
   const [showLoteForm, setShowLoteForm] = useState(false);
+
+  // Visibilidad del formulario de salida de inventario (FEFO)
+  const [showSalidaForm, setShowSalidaForm] = useState(false);
 
   // Filtros de la tabla de inventario
   const [searchQuery, setSearchQuery] = useState('');
@@ -167,7 +172,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F8FD] text-[#1E3A5F] flex flex-col relative overflow-x-hidden">
-      
+
       {/* Elementos orgánicos y patrones de puntos en el fondo */}
       <div className="absolute top-20 right-0 w-80 h-80 bg-[#94FFEA] blob-shape-1 opacity-25 pointer-events-none -mr-20 -z-0" />
       <div className="absolute top-96 left-0 w-96 h-96 bg-[#94B2FF] blob-shape-2 opacity-25 pointer-events-none -ml-28 -z-0" />
@@ -225,7 +230,7 @@ export default function DashboardPage() {
 
       {/* Contenedor Principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full relative z-10">
-        
+
         {/* Alerta de error si el servidor no responde */}
         {error && (
           <div className="mb-6 p-4 rounded-2xl bg-[#FFEAEA] border border-[#FFBFBF] text-[#A82828] text-sm flex items-start gap-3 shadow-sm">
@@ -242,7 +247,7 @@ export default function DashboardPage() {
         ======================================================== */}
         {activeTab === 'inventory' && (
           <div className="space-y-6">
-            
+
             {/* Formulario de registro desplegable */}
             {showLoteForm && (
               <LoteForm
@@ -255,9 +260,18 @@ export default function DashboardPage() {
               />
             )}
 
+            {/* Formulario de salida de inventario (FEFO) */}
+            {showSalidaForm && (
+              <SalidaForm
+                products={products}
+                onDone={fetchProducts}
+                onCancel={() => setShowSalidaForm(false)}
+              />
+            )}
+
             {/* Tarjetas interactivas de resumen rápido de lotes (Estilo Editorial con colores sólidos) */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              
+
               {/* Tarjeta: Todos los Lotes */}
               <button
                 type="button"
@@ -344,7 +358,7 @@ export default function DashboardPage() {
 
             {/* Barra de Búsqueda y Botón para agregar lote */}
             <div className="bg-white rounded-[2rem] p-5 shadow-card border-2 border-[#D8E4F5] flex flex-col md:flex-row items-center justify-between gap-4">
-              
+
               <div className="relative w-full md:w-96">
                 <Search className="w-4 h-4 text-[#94B2FF] absolute left-4 top-1/2 -translate-y-1/2" />
                 <input
@@ -370,6 +384,16 @@ export default function DashboardPage() {
                     <option value="CADUCADO">Solo Caducados</option>
                   </select>
                 </div>
+
+                {!showSalidaForm && (
+                  <button
+                    onClick={() => setShowSalidaForm(true)}
+                    className="px-5 py-2.5 rounded-full text-xs font-extrabold text-[#1E3A5F] bg-[#94B2FF] hover:bg-[#82A5FF] border border-[#82A5FF] transition-all shadow-sm hover:shadow-card hover:-translate-y-0.5 flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <Minus className="w-4 h-4 text-[#1E3A5F]" />
+                    <span>Registrar Salida</span>
+                  </button>
+                )}
 
                 {!showLoteForm && (
                   <button
@@ -405,7 +429,7 @@ export default function DashboardPage() {
                 <table className="w-full text-left text-xs border-collapse">
                   <thead>
                     <tr className="bg-[#F8FAFD] text-[#38577A] uppercase text-[10px] font-black border-b-2 border-[#D8E4F5]">
-                      
+
                       <th className="p-4 cursor-pointer hover:bg-[#EEF4FF] transition-colors" onClick={() => toggleSort('name')}>
                         <div className="flex items-center gap-1.5">
                           <span>Medicamento</span>

@@ -44,6 +44,8 @@ app.post('/api/auth/register', requireAuth, requireRole('admin'), userController
 // Rutas de Productos e Inventario (Lotes y Caducidades): requieren sesión
 app.get('/api/products', requireAuth, productController.getProducts);
 app.post('/api/products', requireAuth, productController.createProduct);
+// Salida de inventario (FEFO): descuenta del lote que vence primero
+app.post('/api/products/exit', requireAuth, productController.exitProduct);
 
 // Ruta de prueba general
 app.get('/', (req, res) => {

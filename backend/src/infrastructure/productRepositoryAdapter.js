@@ -78,6 +78,65 @@ class ProductRepositoryAdapter extends ProductRepositoryPort {
       client.release();
     }
   }
+
+  // Registra una salida de inventario aplicando FEFO (First Expired, First Out):
+  // descuenta primero del lote que vence antes y, si no alcanza, sigue con el siguiente.
+  // Los lotes caducados nunca se usan para vender. Todo ocurre en una sola transacción:
+  // o se descuentan todos los lotes necesarios y se guardan sus movimientos, o no se guarda nada.
+  async registerExit(name, quantity, userId = null) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Lotes vigentes del medicamento, del que vence primero al que vence después.
+      // FOR UPDATE bloquea esas filas: si dos personas dan salida al mismo tiempo,
+      // la segunda espera y ya ve el stock actualizado (no se vende dos veces lo mismo).
+      const lots = await client.query(
+        `SELECT l.id, l.numero_lote AS "batchNumber", l.stock
+           FROM lotes l
+           JOIN medicamentos m ON m.id = l.medicamento_id
+          WHERE m.nombre = $1
+            AND l.stock > 0
+            AND l.fecha_caducidad >= CURRENT_DATE
+          ORDER BY l.fecha_caducidad ASC, l.id ASC
+          FOR UPDATE OF l`,
+        [name]
+      );
+
+      const available = lots.rows.reduce((sum, row) => sum + row.stock, 0);
+      if (lots.rows.length === 0) {
+        throw new Error('No hay existencias vigentes de ese medicamento');
+      }
+      if (available < quantity) {
+        throw new Error(`Stock insuficiente: solo hay ${available} unidades vigentes de ${name}`);
+      }
+
+      let remaining = quantity;
+      const taken = [];
+      for (const lot of lots.rows) {
+        if (remaining === 0) break;
+        const take = Math.min(lot.stock, remaining);
+
+        await client.query('UPDATE lotes SET stock = stock - $1 WHERE id = $2', [take, lot.id]);
+        await client.query(
+          `INSERT INTO movimientos_inventario (lote_id, usuario_id, tipo_movimiento, cantidad)
+           VALUES ($1, $2, 'SALIDA', $3)`,
+          [lot.id, userId, take]
+        );
+
+        taken.push({ id: lot.id, batchNumber: lot.batchNumber, taken: take, remaining: lot.stock - take });
+        remaining -= take;
+      }
+
+      await client.query('COMMIT');
+      return { name, quantity, lots: taken };
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
 }
 
 module.exports = ProductRepositoryAdapter;

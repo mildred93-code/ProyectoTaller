@@ -67,6 +67,26 @@ class ProductService {
       status: saved.getExpirationStatus()
     };
   }
+
+  // Valida y limpia los datos del formulario de salida
+  validateExit(data) {
+    const name = String(data.name ?? '').trim();
+    const quantity = Number(data.quantity);
+
+    if (!name) {
+      throw new Error('El nombre del medicamento es obligatorio');
+    }
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new Error('La cantidad debe ser un número entero mayor a 0');
+    }
+    return { name, quantity };
+  }
+
+  // Registra una salida de inventario (FEFO) y devuelve de qué lotes se descontó
+  async registerExit(data, userId = null) {
+    const clean = this.validateExit(data);
+    return this.productRepositoryPort.registerExit(clean.name, clean.quantity, userId);
+  }
 }
 
 module.exports = ProductService;
