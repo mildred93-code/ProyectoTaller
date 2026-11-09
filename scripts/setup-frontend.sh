@@ -18,10 +18,10 @@ echo ""
 echo "=== Configurando Memoria Virtual (Swap) en AWS ==="
 sudo apt clean 2>/dev/null || true
 TOTAL_SWAP=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
-if [ -z "$TOTAL_SWAP" ] || [ "$TOTAL_SWAP" -lt 1024 ]; then
-    echo "Configurando Swap de 1 GB para evitar errores de memoria en npm..."
+if [ -z "$TOTAL_SWAP" ] || [ "$TOTAL_SWAP" -lt 512 ]; then
+    echo "Configurando Swap ligero de 512 MB..."
     if [ ! -f /swapfile ]; then
-        sudo fallocate -l 1G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=1024
+        sudo fallocate -l 512M /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=512
         sudo chmod 600 /swapfile
         sudo mkswap /swapfile
     fi

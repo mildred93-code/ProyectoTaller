@@ -22,34 +22,30 @@ NGROK_DOMAIN=${NGROK_DOMAIN:-splendor-satisfied-extent.ngrok-free.dev}
 
 echo ""
 echo "=== [1/6] Optimizando Espacio en Disco y Memoria Virtual (Swap) ==="
-# Limpiar cachés para liberar espacio en el disco de AWS (EBS de 8 GB)
+# 1. Desactivar y remover cualquier Swap previo para asegurar liberación real de disco
+sudo swapoff -a 2>/dev/null || true
+sudo rm -f /swapfile* 2>/dev/null || true
+
+# 2. Limpieza profunda de archivos temporales, logs y cachés pesadas
 sudo apt clean 2>/dev/null || true
+sudo apt autoremove --purge -y 2>/dev/null || true
 sudo rm -rf /var/cache/apt/archives/* 2>/dev/null || true
-sudo rm -rf /root/.npm 2>/dev/null || true
-sudo rm -rf /tmp/* 2>/dev/null || true
+sudo rm -rf /root/.npm /home/ubuntu/.npm /tmp/* /var/tmp/* 2>/dev/null || true
+sudo rm -rf /usr/lib/node_modules/n8n* /usr/local/lib/node_modules/n8n* /usr/lib/node_modules/.n8n* 2>/dev/null || true
+sudo journalctl --vacuum-size=20M 2>/dev/null || true
 
-# En instancias de 8GB de disco, un swap de 2.5GB llena el disco. Usamos 1 GB equilibrado.
-if [ -f /swapfile ]; then
-    SWAP_SIZE_MB=$(du -m /swapfile 2>/dev/null | awk '{print $1}')
-    if [ "$SWAP_SIZE_MB" -gt 1200 ]; then
-        echo "Ajustando Swap a 1 GB para no saturar el disco..."
-        sudo swapoff /swapfile 2>/dev/null || true
-        sudo rm -f /swapfile
-    fi
-fi
-
-if [ ! -f /swapfile ]; then
-    echo "Creando Swap equilibrado de 1 GB..."
-    sudo fallocate -l 1G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=1024
-    sudo chmod 600 /swapfile
-    sudo mkswap /swapfile
-fi
+# 3. Crear Swap ultra-ligero de 768 MB (evita que el proceso muera sin comerse el disco de 8GB)
+echo "Creando Swap optimizado de 768 MB..."
+sudo fallocate -l 768M /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=768
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
 sudo swapon /swapfile 2>/dev/null || true
+
 if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
     echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
 fi
 
-echo "Estado de Disco y Memoria en AWS:"
+echo "Estado actual de Disco y Memoria en AWS:"
 df -h /
 free -h
 
@@ -69,6 +65,7 @@ if ! command -v n8n &> /dev/null; then
     echo "Instalando n8n globalmente..."
     sudo npm install -g n8n --no-fund --no-audit
     sudo npm cache clean --force 2>/dev/null || true
+    sudo rm -rf /root/.npm /tmp/* 2>/dev/null || true
 fi
 
 # Instalar ngrok
