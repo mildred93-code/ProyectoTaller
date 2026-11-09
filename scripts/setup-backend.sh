@@ -21,36 +21,51 @@ NGROK_DOMAIN=$(echo "$NGROK_DOMAIN" | tr -d ' \r\n' | sed -e 's#^https\?://##' -
 NGROK_DOMAIN=${NGROK_DOMAIN:-splendor-satisfied-extent.ngrok-free.dev}
 
 echo ""
-echo "=== [1/6] Configurando Memoria Virtual (Swap) en AWS ==="
-# Las instancias t2.micro/t3.micro de AWS tienen solo 1GB de RAM y 0 de Swap.
-# Sin Swap, la instalación de n8n consume toda la RAM y el kernel de Linux la detiene (Killed).
-TOTAL_SWAP=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
-if [ -z "$TOTAL_SWAP" ] || [ "$TOTAL_SWAP" -lt 1024 ]; then
-    echo "Configurando 2.5 GB de Swap para evitar que el instalador de n8n se quede sin memoria..."
-    if [ ! -f /swapfile ]; then
-        sudo fallocate -l 2.5G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2560
-        sudo chmod 600 /swapfile
-        sudo mkswap /swapfile
+echo "=== [1/6] Optimizando Espacio en Disco y Memoria Virtual (Swap) ==="
+# Limpiar cachés para liberar espacio en el disco de AWS (EBS de 8 GB)
+sudo apt clean 2>/dev/null || true
+sudo rm -rf /var/cache/apt/archives/* 2>/dev/null || true
+sudo rm -rf /root/.npm 2>/dev/null || true
+sudo rm -rf /tmp/* 2>/dev/null || true
+
+# En instancias de 8GB de disco, un swap de 2.5GB llena el disco. Usamos 1 GB equilibrado.
+if [ -f /swapfile ]; then
+    SWAP_SIZE_MB=$(du -m /swapfile 2>/dev/null | awk '{print $1}')
+    if [ "$SWAP_SIZE_MB" -gt 1200 ]; then
+        echo "Ajustando Swap a 1 GB para no saturar el disco..."
+        sudo swapoff /swapfile 2>/dev/null || true
+        sudo rm -f /swapfile
     fi
-    sudo swapon /swapfile 2>/dev/null || true
-    if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
-        echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-    fi
-    echo "Swap activado con éxito:"
-    free -h
 fi
+
+if [ ! -f /swapfile ]; then
+    echo "Creando Swap equilibrado de 1 GB..."
+    sudo fallocate -l 1G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=1024
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+fi
+sudo swapon /swapfile 2>/dev/null || true
+if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
+    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+fi
+
+echo "Estado de Disco y Memoria en AWS:"
+df -h /
+free -h
 
 echo ""
 echo "=== [2/6] Instalando Node.js 20 LTS ==="
 sudo apt update -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs build-essential
+sudo apt clean 2>/dev/null || true
 
 echo "=== [3/6] Instalando n8n y ngrok ==="
-# Instalar n8n globalmente
+# Instalar n8n globalmente sin saturar disco ni memoria
 if ! command -v n8n &> /dev/null; then
     echo "Instalando n8n globalmente..."
-    sudo npm install -g n8n
+    sudo npm install -g n8n --no-fund --no-audit
+    sudo npm cache clean --force 2>/dev/null || true
 fi
 
 # Instalar ngrok
