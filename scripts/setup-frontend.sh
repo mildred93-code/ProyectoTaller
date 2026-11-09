@@ -14,6 +14,24 @@ if [ -z "$BACKEND_IP" ]; then
     exit 1
 fi
 
+echo ""
+echo "=== Configurando Memoria Virtual (Swap) en AWS ==="
+TOTAL_SWAP=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
+if [ -z "$TOTAL_SWAP" ] || [ "$TOTAL_SWAP" -lt 1024 ]; then
+    echo "Configurando Swap para evitar errores de memoria en npm..."
+    if [ ! -f /swapfile ]; then
+        sudo fallocate -l 1.5G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=1536
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+    fi
+    sudo swapon /swapfile 2>/dev/null || true
+    if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
+        echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+    fi
+    echo "Swap activado con éxito."
+fi
+
+echo ""
 echo "=== [1/3] Instalando Node.js 20 LTS ==="
 sudo apt update -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -

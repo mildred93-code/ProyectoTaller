@@ -21,12 +21,32 @@ NGROK_DOMAIN=$(echo "$NGROK_DOMAIN" | tr -d ' \r\n' | sed -e 's#^https\?://##' -
 NGROK_DOMAIN=${NGROK_DOMAIN:-splendor-satisfied-extent.ngrok-free.dev}
 
 echo ""
-echo "=== [1/5] Instalando Node.js 20 LTS ==="
+echo "=== [1/6] Configurando Memoria Virtual (Swap) en AWS ==="
+# Las instancias t2.micro/t3.micro de AWS tienen solo 1GB de RAM y 0 de Swap.
+# Sin Swap, la instalación de n8n consume toda la RAM y el kernel de Linux la detiene (Killed).
+TOTAL_SWAP=$(free -m 2>/dev/null | awk '/^Swap:/{print $2}')
+if [ -z "$TOTAL_SWAP" ] || [ "$TOTAL_SWAP" -lt 1024 ]; then
+    echo "Configurando 2.5 GB de Swap para evitar que el instalador de n8n se quede sin memoria..."
+    if [ ! -f /swapfile ]; then
+        sudo fallocate -l 2.5G /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=2560
+        sudo chmod 600 /swapfile
+        sudo mkswap /swapfile
+    fi
+    sudo swapon /swapfile 2>/dev/null || true
+    if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
+        echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+    fi
+    echo "Swap activado con éxito:"
+    free -h
+fi
+
+echo ""
+echo "=== [2/6] Instalando Node.js 20 LTS ==="
 sudo apt update -y
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt install -y nodejs build-essential
 
-echo "=== [2/5] Instalando n8n y ngrok ==="
+echo "=== [3/6] Instalando n8n y ngrok ==="
 # Instalar n8n globalmente
 if ! command -v n8n &> /dev/null; then
     echo "Instalando n8n globalmente..."
@@ -55,7 +75,7 @@ if [ -f "$WORKFLOW_FILE" ]; then
     n8n import:workflow --input="$WORKFLOW_FILE" 2>/dev/null || true
 fi
 
-echo "=== [3/5] Instalando dependencias del Backend ==="
+echo "=== [4/6] Instalando dependencias del Backend ==="
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/../backend"
 
@@ -67,7 +87,7 @@ if [ -f "node_modules/nodemon/bin/nodemon.js" ] && [ ! -L "node_modules/.bin/nod
     ln -sf ../nodemon/bin/nodemon.js node_modules/.bin/nodemon 2>/dev/null || true
 fi
 
-echo "=== [4/5] Generando archivo .env del Backend ==="
+echo "=== [5/6] Generando archivo .env del Backend ==="
 cat <<EOF > .env
 PORT=4000
 DB_HOST=$DB_HOST
