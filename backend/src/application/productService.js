@@ -46,8 +46,25 @@ class ProductService {
     return { name, batchNumber, stock, expirationDate };
   }
 
+  // Código de barras opcional: vacío -> null; si viene, 4 a 50 caracteres visibles y sin espacios
+  normalizeBarcode(value) {
+    const barcode = String(value ?? '').trim();
+    if (!barcode) return null;
+    if (!/^[\x21-\x7E]{4,50}$/.test(barcode)) {
+      throw new Error('El código de barras no es válido (4 a 50 caracteres, sin espacios)');
+    }
+    return barcode;
+  }
+
+  async getByBarcode(value) {
+    const barcode = this.normalizeBarcode(value);
+    if (!barcode) throw new Error('Escribe o escanea un código de barras');
+    return this.productRepositoryPort.findByBarcode(barcode);
+  }
+
   async createProduct(data, userId = null) {
     const clean = this.validateNewProduct(data);
+    const barcode = this.normalizeBarcode(data.barcode);
 
     const newProduct = new Product(
       null,
@@ -56,7 +73,7 @@ class ProductService {
       clean.stock,
       clean.expirationDate
     );
-    const saved = await this.productRepositoryPort.save(newProduct, userId);
+    const saved = await this.productRepositoryPort.save(newProduct, userId, barcode);
 
     return {
       id: saved.id,

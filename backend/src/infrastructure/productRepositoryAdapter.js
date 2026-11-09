@@ -34,7 +34,7 @@ class ProductRepositoryAdapter extends ProductRepositoryPort {
 
   // Registra un lote nuevo. Todo ocurre en una sola transacción:
   // o se guardan el medicamento, el lote y el movimiento de entrada, o no se guarda nada.
-  async save(product, userId = null) {
+  async save(product, userId = null, barcode = null) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
@@ -44,10 +44,28 @@ class ProductRepositoryAdapter extends ProductRepositoryPort {
         `INSERT INTO medicamentos (nombre, descripcion, precio)
          VALUES ($1, '', 0)
          ON CONFLICT (nombre) DO UPDATE SET nombre = EXCLUDED.nombre
-         RETURNING id`,
+         RETURNING id, codigo_barras AS barcode`,
         [product.name]
       );
       const medicamentoId = med.rows[0].id;
+
+      // 1b. Código de barras (opcional): identifica al medicamento, no al lote.
+      if (barcode) {
+        const owner = await client.query(
+          'SELECT nombre FROM medicamentos WHERE codigo_barras = $1 AND id <> $2',
+          [barcode, medicamentoId]
+        );
+        if (owner.rows.length > 0) {
+          throw new Error(`Ese código de barras ya pertenece a "${owner.rows[0].nombre}"`);
+        }
+        const current = med.rows[0].barcode;
+        if (current && current !== barcode) {
+          throw new Error(`"${product.name}" ya tiene otro código de barras registrado (${current})`);
+        }
+        if (!current) {
+          await client.query('UPDATE medicamentos SET codigo_barras = $1 WHERE id = $2', [barcode, medicamentoId]);
+        }
+      }
 
       // 2. Guarda el lote
       const lote = await client.query(
@@ -77,6 +95,15 @@ class ProductRepositoryAdapter extends ProductRepositoryPort {
     } finally {
       client.release();
     }
+  }
+
+  // Busca un medicamento por su código de barras (null si no existe)
+  async findByBarcode(barcode) {
+    const result = await pool.query(
+      'SELECT nombre AS name, codigo_barras AS barcode FROM medicamentos WHERE codigo_barras = $1',
+      [barcode]
+    );
+    return result.rows[0] || null;
   }
 
   // Retiro de lotes caducados: saca del inventario el stock de un lote caducado (o de todos).

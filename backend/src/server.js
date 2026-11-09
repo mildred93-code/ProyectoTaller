@@ -44,7 +44,9 @@ app.post('/api/auth/register', requireAuth, requireRole('admin'), userController
 // Rutas de Productos e Inventario (Lotes y Caducidades): requieren sesión
 app.get('/api/products', requireAuth, productController.getProducts);
 app.post('/api/products', requireAuth, productController.createProduct);
-// Salida de inventario (FEFO): descuenta del lote que vence primero
+// Buscar medicamento por código de barras
+app.get('/api/products/barcode/:code', requireAuth, productController.getByBarcode);
+// Retiro de lotes caducados (salida de inventario)
 app.post('/api/products/exit', requireAuth, productController.exitProduct);
 
 // Historial de movimientos (entradas y salidas)

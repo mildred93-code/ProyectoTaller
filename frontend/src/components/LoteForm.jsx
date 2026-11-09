@@ -10,10 +10,12 @@ import {
   AlertCircle,
   Clock,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  Camera
 } from 'lucide-react';
+import BarcodeScanner from './BarcodeScanner';
 
-const EMPTY_FORM = { name: '', batchNumber: '', stock: '', expirationDate: '' };
+const EMPTY_FORM = { name: '', batchNumber: '', stock: '', expirationDate: '', barcode: '' };
 
 // Fecha de hoy en formato YYYY-MM-DD
 const todayString = () => new Date().toLocaleDateString('en-CA');
@@ -33,12 +35,66 @@ export default function LoteForm({ medicamentos = [], onCreated, onCancel }) {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const nameInputRef = useRef(null);
+  const batchInputRef = useRef(null);
+  const lastLookupRef = useRef('');
+  const [scanning, setScanning] = useState(false);
+  const [lookup, setLookup] = useState(null); // { type: 'found' | 'new' | 'error' | 'loading', text }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
     setError('');
     setSuccess('');
+  };
+
+  // Busca en el catálogo el medicamento que corresponde al código de barras y llena el formulario
+  const lookupBarcode = async (rawCode) => {
+    const code = String(rawCode || '').trim();
+    if (!code || lastLookupRef.current === code) return;
+    lastLookupRef.current = code;
+    setLookup({ type: 'loading', text: 'Buscando código...' });
+    try {
+      const response = await axiosClient.get(`/products/barcode/${encodeURIComponent(code)}`);
+      if (response.data.success) {
+        const found = response.data.data;
+        setForm((prev) => ({ ...prev, barcode: code, name: found.name }));
+        setLookup({ type: 'found', text: `Medicamento reconocido: ${found.name}` });
+        if (batchInputRef.current) batchInputRef.current.focus();
+      }
+    } catch (err) {
+      if (err.response?.status === 404) {
+        setLookup({ type: 'new', text: 'Código nuevo: escribe el nombre del medicamento para asociarlo.' });
+        if (nameInputRef.current) nameInputRef.current.focus();
+      } else {
+        lastLookupRef.current = '';
+        setLookup({
+          type: 'error',
+          text: err.response?.data?.message || 'No se pudo buscar el código. Verifique que el backend esté en ejecución.'
+        });
+      }
+    }
+  };
+
+  const handleBarcodeChange = (e) => {
+    handleChange(e);
+    lastLookupRef.current = '';
+    setLookup(null);
+  };
+
+  // Los lectores USB escriben el código y mandan Enter: se busca sin enviar el formulario
+  const handleBarcodeKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      lookupBarcode(e.target.value);
+    }
+  };
+
+  const handleDetected = (code) => {
+    setScanning(false);
+    setForm((prev) => ({ ...prev, barcode: code }));
+    setError('');
+    setSuccess('');
+    lookupBarcode(code);
   };
 
   const handleStockPreset = (amount) => {
@@ -91,6 +147,7 @@ export default function LoteForm({ medicamentos = [], onCreated, onCancel }) {
         batchNumber: form.batchNumber.trim(),
         stock: Number(form.stock),
         expirationDate: form.expirationDate,
+        barcode: form.barcode.trim(),
       });
 
       if (response.data.success) {
@@ -98,6 +155,8 @@ export default function LoteForm({ medicamentos = [], onCreated, onCancel }) {
           `Lote ${form.batchNumber.trim()} para "${form.name.trim()}" registrado y sincronizado en el inventario.`
         );
         setForm(EMPTY_FORM);
+        setLookup(null);
+        lastLookupRef.current = '';
         if (onCreated) await onCreated();
         if (nameInputRef.current) nameInputRef.current.focus();
       }
@@ -143,8 +202,54 @@ export default function LoteForm({ medicamentos = [], onCreated, onCancel }) {
       </div>
 
       <form onSubmit={handleSubmit} noValidate className="p-6 lg:p-8">
+        {/* Código de barras (opcional): lector USB o cámara */}
+        <div className="mb-6 p-4 rounded-2xl bg-[#F8FAFD] border-2 border-dashed border-[#D8E4F5]">
+          <label htmlFor="lote-barcode" className="block text-xs font-bold uppercase tracking-wider text-[#1E3A5F] mb-1.5 flex items-center gap-1.5">
+            <Barcode className="w-4 h-4 text-[#94B2FF]" />
+            Código de barras (opcional)
+          </label>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              id="lote-barcode"
+              name="barcode"
+              value={form.barcode}
+              onChange={handleBarcodeChange}
+              onKeyDown={handleBarcodeKeyDown}
+              onBlur={(e) => lookupBarcode(e.target.value)}
+              placeholder="Escanea o escribe el código"
+              className="flex-1 px-4 py-3 bg-white border-2 border-[#D8E4F5] rounded-2xl text-sm text-[#1E3A5F] font-mono font-medium placeholder-[#8DA7C4] focus:outline-none focus:border-[#94B2FF] focus:ring-4 focus:ring-[#94B2FF]/20 transition-all shadow-sm"
+              autoComplete="off"
+            />
+            <button
+              type="button"
+              onClick={() => setScanning(true)}
+              className="px-5 py-3 rounded-full text-xs font-extrabold text-[#1E3A5F] bg-[#94FFEA] hover:bg-[#7EFBE2] border border-[#7EFBE2] transition-colors flex items-center justify-center gap-2"
+            >
+              <Camera className="w-4 h-4 text-[#0D6E58]" />
+              Escanear con cámara
+            </button>
+          </div>
+          <p className="mt-1.5 text-[11px] text-[#6B8BAA]">
+            Con lector USB, dispara el escáner con el cursor en este campo. Si el código ya existe, se llena el medicamento solo.
+          </p>
+          {lookup && (
+            <p
+              role="status"
+              className={`mt-2 text-xs font-bold ${
+                lookup.type === 'found'
+                  ? 'text-[#0D6E58]'
+                  : lookup.type === 'error'
+                  ? 'text-[#A82828]'
+                  : 'text-[#38577A]'
+              }`}
+            >
+              {lookup.text}
+            </p>
+          )}
+        </div>
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          
+
           {/* Medicamento */}
           <div>
             <label htmlFor="lote-name" className="block text-xs font-bold uppercase tracking-wider text-[#1E3A5F] mb-1.5 flex items-center gap-1.5">
@@ -194,6 +299,7 @@ export default function LoteForm({ medicamentos = [], onCreated, onCancel }) {
             <input
               id="lote-batch"
               name="batchNumber"
+              ref={batchInputRef}
               value={form.batchNumber}
               onChange={handleChange}
               placeholder="Ej. LOT-PAR-2026A"
@@ -319,6 +425,8 @@ export default function LoteForm({ medicamentos = [], onCreated, onCancel }) {
               setForm(EMPTY_FORM);
               setError('');
               setSuccess('');
+              setLookup(null);
+              lastLookupRef.current = '';
             }}
             className="px-4 py-2.5 rounded-full text-xs font-bold text-[#456586] hover:text-[#1E3A5F] hover:bg-[#EEF4FF] transition-colors flex items-center gap-2"
           >
@@ -357,6 +465,10 @@ export default function LoteForm({ medicamentos = [], onCreated, onCancel }) {
         </div>
 
       </form>
+
+      {scanning && (
+        <BarcodeScanner onDetected={handleDetected} onClose={() => setScanning(false)} />
+      )}
     </div>
   );
 }
