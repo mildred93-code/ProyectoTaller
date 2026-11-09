@@ -1,0 +1,169 @@
+{
+  "name": "My workflow Farmacia",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        0
+      ],
+      "id": "d3507183-b007-443c-a840-b71e1c05866e",
+      "name": "Telegram Trigger",
+      "webhookId": "9fbb1fec-07f4-4a9b-9b76-3e7f683d7dce",
+      "credentials": {
+        "telegramApi": {
+          "id": "u1USm3ozJLtyksVY",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=={{ $json.message.text }}",
+        "options": {
+          "systemMessage": "Eres Morgan 🏥, el asistente virtual oficial de la farmacia PharmaTrace 💊. Tu objetivo es ayudar a los usuarios de forma amigable, atenta, clara y profesional en español. Utiliza emojis médicos y de farmacia como 🏥, 💊, 🩺, 💉, 📋 o ✨ en tus respuestas para mantener una interacción cálida. Consulta las herramientas conectadas cuando necesites revisar stock de medicamentos, productos o información relevante de la base de datos. Responde siempre en texto plano. No utilices ningún tipo de formato Markdown como asteriscos (*), guiones bajos (_) o comillas invertidas (`)."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        224,
+        0
+      ],
+      "id": "9f97c495-1caf-4d39-b548-01c13e5359f3",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        96,
+        208
+      ],
+      "id": "6bd37cbe-8f02-4806-aead-ec9c22dae2bb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "zhJvIzE7YOsQOJSe",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "\"Útil para consultar información de roles, medicamentos o caducidad en la base de datos de la farmacia.\"",
+        "operation": "executeQuery",
+        "query": "SELECT * FROM roles;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgresTool",
+      "typeVersion": 2.8,
+      "position": [
+        384,
+        208
+      ],
+      "id": "9bc4a3da-f82e-4ee7-94ac-87f3e9d7323c",
+      "name": "Execute a SQL query in Postgres",
+      "credentials": {
+        "postgres": {
+          "id": "apVzlt57vuaTlcG1",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        592,
+        0
+      ],
+      "id": "9516d0c3-c1e4-43eb-8fb5-fef996bfe362",
+      "name": "Send a text message",
+      "webhookId": "6d3a7f15-9ca8-4236-b53e-f5b141b3a9f0",
+      "credentials": {
+        "telegramApi": {
+          "id": "u1USm3ozJLtyksVY",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute a SQL query in Postgres": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "74641d4d-a471-4b5d-9ea9-44bb337cbc37",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a6273c8e2ccc2292bcef9d32be4759e4b35057b18912a43da1fde165cd2f2397"
+  },
+  "nodeGroups": [],
+  "id": "oZM00giYC768YHiQ",
+  "tags": []
+}

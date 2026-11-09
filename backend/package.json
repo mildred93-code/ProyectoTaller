@@ -164,10 +164,17 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "n8n": "WEBHOOK_URL=https://splendor-satisfied-extent.ngrok-free.dev/ n8n start",
+    "ngrok": "ngrok http 5678 --log=stdout",
+    "ngrok:backend": "ngrok http 4000 --log=stdout",
+    "dev:all": "concurrently -k -n \"BACKEND,N8N,NGROK\" -c \"blue,green,magenta\" \"npm run dev\" \"npm run n8n\" \"npm run ngrok\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "devDependencies": {
+    "concurrently": "^10.0.6"
+  }
 }
