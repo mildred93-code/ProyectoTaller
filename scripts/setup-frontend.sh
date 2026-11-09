@@ -33,9 +33,9 @@ if [ -z "$TOTAL_SWAP" ] || [ "$TOTAL_SWAP" -lt 1024 ]; then
 fi
 
 echo ""
-echo "=== [1/3] Instalando Node.js 20 LTS ==="
+echo "=== [1/3] Instalando Node.js 22 LTS ==="
 sudo apt update -y
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs build-essential
 
 # Permitir puerto 5173 en el firewall de Ubuntu si ufw está activo

@@ -54,13 +54,16 @@ df -h /
 free -h
 
 echo ""
-echo "=== [2/6] Instalando Node.js 20 LTS ==="
+echo "=== [2/6] Instalando Node.js 22 LTS ==="
 sudo apt update -y
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs build-essential
 sudo apt clean 2>/dev/null || true
 
 echo "=== [3/6] Instalando n8n y ngrok ==="
+# Limpiar carpetas dañadas o incompletas de instalaciones previas (error ENOTEMPTY)
+sudo rm -rf /usr/lib/node_modules/n8n* /usr/local/lib/node_modules/n8n* /usr/lib/node_modules/.n8n* /usr/local/lib/node_modules/.n8n* 2>/dev/null || true
+
 # Instalar n8n globalmente sin saturar disco ni memoria
 if ! command -v n8n &> /dev/null; then
     echo "Instalando n8n globalmente..."
