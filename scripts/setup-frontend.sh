@@ -49,6 +49,8 @@ cd "$FRONTEND_DIR"
 npm install
 # Librería para el lector de código de barras
 npm install html5-qrcode@2.3.8
+# Otorgar permisos de ejecución a vite y demás binarios
+chmod -R +x node_modules/.bin 2>/dev/null || true
 
 echo "=== [3/3] Configurando conexión hacia el Backend ==="
 # Generar archivo .env para Vite

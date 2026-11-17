@@ -30,9 +30,13 @@ BACKEND_DIR="$SCRIPT_DIR/../backend"
 cd "$BACKEND_DIR"
 npm install
 
-# Corregir enlace simbólico de nodemon en Linux si es necesario
-if [ -f "node_modules/nodemon/bin/nodemon.js" ] && [ ! -L "node_modules/.bin/nodemon" ]; then
-    ln -sf ../nodemon/bin/nodemon.js node_modules/.bin/nodemon 2>/dev/null || true
+# Otorgar permisos de ejecución a los binarios locales
+chmod -R +x node_modules/.bin 2>/dev/null || true
+if [ -f "node_modules/nodemon/bin/nodemon.js" ]; then
+    chmod +x node_modules/nodemon/bin/nodemon.js 2>/dev/null || true
+    if [ ! -L "node_modules/.bin/nodemon" ]; then
+        ln -sf ../nodemon/bin/nodemon.js node_modules/.bin/nodemon 2>/dev/null || true
+    fi
 fi
 
 echo "=== [3/3] Generando archivo .env del Backend ==="
@@ -69,4 +73,4 @@ echo "Iniciando servidor Express en puerto 4000..."
 echo "Presiona Ctrl+C para detener."
 echo "=========================================================="
 
-npm run dev
+node src/server.js
