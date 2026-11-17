@@ -107,7 +107,7 @@ echo ""
 echo "=========================================================="
 echo "✅ Base de datos 'farmacia_inventario' configurada con éxito."
 echo ""
-echo "👉 COPIA ESTA IP PARA CONFIGURAR LA INSTANCIA 2 (Backend):"
+echo "👉 COPIA ESTA IP PARA CONFIGURAR LA INSTANCIA 2 (Backend) Y LA INSTANCIA 4 (n8n):"
 echo "   IP Privada (Recomendada en AWS si están en la misma VPC): $PRIV_IP"
 if [ "$PUB_IP" != "$PRIV_IP" ] && [ -n "$PUB_IP" ]; then
 echo "   IP Pública (Alternativa si están en redes separadas):    $PUB_IP"

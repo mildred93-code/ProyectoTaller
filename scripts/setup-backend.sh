@@ -14,83 +14,16 @@ if [ -z "$DB_HOST" ]; then
 fi
 
 echo ""
-echo "=== Configuración de ngrok para Telegram y n8n ==="
-read -p "Ingresa tu Authtoken de ngrok (Enter si ya lo tienes configurado): " NGROK_TOKEN
-read -p "Ingresa tu dominio estático de ngrok [Enter para usar 'splendor-satisfied-extent.ngrok-free.dev']: " NGROK_DOMAIN
-NGROK_DOMAIN=$(echo "$NGROK_DOMAIN" | tr -d ' \r\n' | sed -e 's#^https\?://##' -e 's#/.*$##')
-NGROK_DOMAIN=${NGROK_DOMAIN:-splendor-satisfied-extent.ngrok-free.dev}
-
-echo ""
-echo "=== [1/6] Optimizando Espacio en Disco y Memoria Virtual (Swap) ==="
-# 1. Desactivar y remover cualquier Swap previo para asegurar liberación real de disco
-sudo swapoff -a 2>/dev/null || true
-sudo rm -f /swapfile* 2>/dev/null || true
-
-# 2. Limpieza profunda de archivos temporales, logs y cachés pesadas
-sudo apt clean 2>/dev/null || true
-sudo apt autoremove --purge -y 2>/dev/null || true
-sudo rm -rf /var/cache/apt/archives/* 2>/dev/null || true
-sudo rm -rf /root/.npm /home/ubuntu/.npm /tmp/* /var/tmp/* 2>/dev/null || true
-sudo rm -rf /usr/lib/node_modules/n8n* /usr/local/lib/node_modules/n8n* /usr/lib/node_modules/.n8n* 2>/dev/null || true
-sudo journalctl --vacuum-size=20M 2>/dev/null || true
-
-# 3. Crear Swap ultra-ligero de 768 MB (evita que el proceso muera sin comerse el disco de 8GB)
-echo "Creando Swap optimizado de 768 MB..."
-sudo fallocate -l 768M /swapfile 2>/dev/null || sudo dd if=/dev/zero of=/swapfile bs=1M count=768
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile 2>/dev/null || true
-
-if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
-    echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-fi
-
-echo "Estado actual de Disco y Memoria en AWS:"
-df -h /
-free -h
-
-echo ""
-echo "=== [2/6] Instalando Node.js 22 LTS ==="
+echo "=== [1/3] Instalando Node.js 22 LTS ==="
 sudo apt update -y
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs build-essential
 sudo apt clean 2>/dev/null || true
 
-echo "=== [3/6] Instalando n8n y ngrok ==="
-# Limpiar carpetas dañadas o incompletas de instalaciones previas (error ENOTEMPTY)
-sudo rm -rf /usr/lib/node_modules/n8n* /usr/local/lib/node_modules/n8n* /usr/lib/node_modules/.n8n* /usr/local/lib/node_modules/.n8n* 2>/dev/null || true
-
-# Instalar n8n globalmente sin saturar disco ni memoria
-if ! command -v n8n &> /dev/null; then
-    echo "Instalando n8n globalmente..."
-    sudo npm install -g n8n --no-fund --no-audit
-    sudo npm cache clean --force 2>/dev/null || true
-    sudo rm -rf /root/.npm /tmp/* 2>/dev/null || true
-fi
-
-# Instalar ngrok
-if ! command -v ngrok &> /dev/null; then
-    echo "Descargando e instalando ngrok..."
-    curl -sSL https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz | sudo tar -xz -C /usr/local/bin
-fi
-
-# Configurar token de ngrok si se proporcionó
-if [ -n "$NGROK_TOKEN" ]; then
-    ngrok config add-authtoken "$NGROK_TOKEN" || true
-fi
-
-# Habilitar puertos en el firewall si ufw está activo
+# Habilitar puerto 4000 en el firewall si ufw está activo
 sudo ufw allow 4000/tcp 2>/dev/null || true
-sudo ufw allow 5678/tcp 2>/dev/null || true
 
-# Importar flujo de n8n si existe en el repositorio
-WORKFLOW_FILE="$SCRIPT_DIR/../FlujoN8N/My workflow Farmacia.json"
-if [ -f "$WORKFLOW_FILE" ]; then
-    echo "Importando automáticamente el flujo de Farmacia a n8n..."
-    n8n import:workflow --input="$WORKFLOW_FILE" 2>/dev/null || true
-fi
-
-echo "=== [4/6] Instalando dependencias del Backend ==="
+echo "=== [2/3] Instalando dependencias del Backend ==="
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKEND_DIR="$SCRIPT_DIR/../backend"
 
@@ -102,22 +35,21 @@ if [ -f "node_modules/nodemon/bin/nodemon.js" ] && [ ! -L "node_modules/.bin/nod
     ln -sf ../nodemon/bin/nodemon.js node_modules/.bin/nodemon 2>/dev/null || true
 fi
 
-echo "=== [5/6] Generando archivo .env del Backend ==="
+echo "=== [3/3] Generando archivo .env del Backend ==="
 cat <<EOF > .env
 PORT=4000
 DB_HOST=$DB_HOST
-DB_USER=farmacia_use
+DB_USER=farmacia_user
 DB_PASSWORD=admin123
 DB_NAME=farmacia_inventario
 DB_PORT=5432
 JWT_SECRET=tu_clave_secreta_super_segura_2026
 EMAIL_HOST=sandbox.smtp.mailtrap.io
 EMAIL_PORT=2525
-EMAIL_USER=sandbox_use
+EMAIL_USER=sandbox_user
 EMAIL_PASS=sandbox_pass
 EMAIL_FROM=no-reply@farmacia.com
 EMAIL_ADMIN=admin@farmacia.com
-WEBHOOK_URL=https://$NGROK_DOMAIN/
 EOF
 
 PUB_IP=$(curl -s -m 2 https://checkip.amazonaws.com 2>/dev/null || curl -s -m 2 https://api.ipify.org 2>/dev/null || curl -s -m 2 ifconfig.me 2>/dev/null || hostname -I | awk '{print $1}')
@@ -125,31 +57,16 @@ PUB_IP=$(echo "$PUB_IP" | tr -d ' \r\n')
 
 echo ""
 echo "=========================================================="
-echo "✅ Backend, n8n y ngrok configurados con éxito!"
+echo "✅ Backend configurado con éxito!"
 echo ""
-echo "1. IP de la Base de Datos conectada: $DB_HOST"
-echo "2. Backend API corriendo en:          http://$PUB_IP:4000"
-echo "3. Interfaz de n8n corriendo en:     http://$PUB_IP:5678"
-echo "4. Túnel ngrok (Telegram Webhook):   https://$NGROK_DOMAIN"
+echo "1. Base de Datos conectada: $DB_HOST:5432 (farmacia_inventario)"
+echo "2. Backend API disponible:   http://$PUB_IP:4000"
 echo ""
 echo "👉 COPIA ESTA IP PARA LA INSTANCIA 3 (Frontend):"
 echo "   IP Pública de Backend: $PUB_IP"
 echo ""
-echo "Iniciando Backend (4000) + n8n (5678) + ngrok (5678)..."
-echo "Presiona Ctrl+C en cualquier momento para detener los servicios."
+echo "Iniciando servidor Express en puerto 4000..."
+echo "Presiona Ctrl+C para detener."
 echo "=========================================================="
 
-# Comando para ngrok
-if [ -n "$NGROK_DOMAIN" ]; then
-    NGROK_CMD="ngrok http 5678 --url=$NGROK_DOMAIN --log=stdout"
-    N8N_CMD="WEBHOOK_URL=https://$NGROK_DOMAIN/ n8n start"
-else
-    NGROK_CMD="ngrok http 5678 --log=stdout"
-    N8N_CMD="n8n start"
-fi
-
-# Ejecutar Backend, n8n y ngrok simultáneamente
-npx concurrently -k -n "BACKEND,N8N,NGROK" -c "blue,green,magenta" \
-    "npm run dev" \
-    "$N8N_CMD" \
-    "$NGROK_CMD"
+npm run dev

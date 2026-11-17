@@ -1,10 +1,11 @@
 ======================================================================
-GUÍA DE INSTALACIÓN Y DESPLIEGUE EN AWS (3 INSTANCIAS EC2 UBUNTU)
-Proyecto: Sistema de Inventario de Farmacia (Backend + Frontend + n8n + ngrok)
+GUÍA DE INSTALACIÓN Y DESPLIEGUE EN AWS (4 INSTANCIAS EC2 UBUNTU)
+Proyecto: Sistema de Farmacia e Inventario (BD + Backend + Frontend + n8n)
 ======================================================================
 
-Debes realizar la configuración de tus 3 instancias en el siguiente orden
-para que se enlacen correctamente entre sí.
+Al separar la arquitectura en 4 instancias independientes, cada servicio
+cuenta con sus propios recursos de RAM y disco duro (evitando que n8n
+sature la memoria o el almacenamiento del Backend).
 
 ----------------------------------------------------------------------
 PASO 0: CONFIGURACIÓN DE GRUPOS DE SEGURIDAD (REGLAS DE ENTRADA EN AWS)
@@ -15,19 +16,19 @@ PASO 0: CONFIGURACIÓN DE GRUPOS DE SEGURIDAD (REGLAS DE ENTRADA EN AWS)
    - Puerto: 5432
    - Origen: Anywhere-IPv4 (0.0.0.0/0)
 
-2. Instancia 2 (Backend + n8n + ngrok):
-   - Regla 1:
-     * Tipo: TCP Personalizado
-     * Puerto: 4000 (API Backend Express)
-     * Origen: Anywhere-IPv4 (0.0.0.0/0)
-   - Regla 2:
-     * Tipo: TCP Personalizado
-     * Puerto: 5678 (Interfaz Web de n8n)
-     * Origen: Anywhere-IPv4 (0.0.0.0/0)
-
-3. Instancia 3 (Frontend Vite/React):
+2. Instancia 2 (Backend Express):
    - Tipo: TCP Personalizado
-   - Puerto: 5173 (Frontend Web)
+   - Puerto: 4000 (API Backend)
+   - Origen: Anywhere-IPv4 (0.0.0.0/0)
+
+3. Instancia 3 (Frontend React / Vite):
+   - Tipo: TCP Personalizado
+   - Puerto: 5173 (Aplicación Web)
+   - Origen: Anywhere-IPv4 (0.0.0.0/0)
+
+4. Instancia 4 (n8n + ngrok):
+   - Tipo: TCP Personalizado
+   - Puerto: 5678 (Panel Web de n8n)
    - Origen: Anywhere-IPv4 (0.0.0.0/0)
 
 ----------------------------------------------------------------------
@@ -43,12 +44,12 @@ Conéctate por SSH o consola a la Instancia 1 y ejecuta:
 - Instala PostgreSQL.
 - Crea la base de datos 'farmacia_inventario' y el usuario 'farmacia_user'.
 - Ejecuta automáticamente 'tablas_farmacia.sql' y las migraciones de lotes y código de barras.
-- Configura PostgreSQL para aceptar conexiones remotas.
-- Al terminar, te imprimirá en pantalla la IP de esta máquina.
-👉 COPIA ESA IP para usarla en el siguiente paso.
+- Configura PostgreSQL para permitir conexiones remotas (puerto 5432).
+- Al finalizar, te mostrará la IP en pantalla.
+👉 COPIA ESA IP (la necesitarás para la Instancia 2 de Backend y la Instancia 4 de n8n).
 
 ----------------------------------------------------------------------
-PASO 2: INSTANCIA 2 (Backend + n8n + ngrok)
+PASO 2: INSTANCIA 2 (Backend Express)
 ----------------------------------------------------------------------
 Conéctate por SSH o consola a la Instancia 2 y ejecuta:
 
@@ -57,16 +58,12 @@ Conéctate por SSH o consola a la Instancia 2 y ejecuta:
 3- bash setup-backend.sh
 
 ¿Qué hace este script?
-- Te pedirá la IP de la Instancia 1 (Base de Datos) que copiaste en el paso anterior.
-- Te pedirá tu Authtoken y dominio de ngrok (o puedes presionar Enter para usar el dominio predeterminado).
-- Instala Node.js 20, n8n y ngrok automáticamente.
-- Instala dependencias y genera el archivo '.env' con la base 'farmacia_inventario'.
-- Levanta al mismo tiempo:
-    * Backend en el puerto 4000
-    * n8n en el puerto 5678
-    * ngrok apuntando al puerto 5678 (para los webhooks seguros HTTPS de Telegram)
-- Al terminar, te mostrará la IP Pública de la Instancia 2.
-👉 COPIA ESA IP para el Frontend.
+- Te pedirá la IP de la Instancia 1 (Base de Datos).
+- Instala Node.js 22 LTS y las dependencias del backend.
+- Genera el archivo '.env' conectado a 'farmacia_inventario'.
+- Abre el puerto 4000 e inicia el servidor Express.
+- Al finalizar, te mostrará la IP Pública de la Instancia 2.
+👉 COPIA ESA IP (la necesitarás para el Frontend).
 
 ----------------------------------------------------------------------
 PASO 3: INSTANCIA 3 (Frontend React / Vite)
@@ -79,20 +76,44 @@ Conéctate por SSH o consola a la Instancia 3 y ejecuta:
 
 ¿Qué hace este script?
 - Te pedirá la IP Pública de la Instancia 2 (Backend).
-- Instala Node.js 20 y las dependencias del frontend.
-- Configura la conexión de la API hacia http://<IP_BACKEND>:4000/api.
-- Inicia el servidor de desarrollo de Vite en el puerto 5173 accesible públicamente.
+- Instala Node.js 22, las dependencias de React y el lector de código de barras (html5-qrcode).
+- Configura la conexión dinámica hacia http://<IP_BACKEND>:4000/api.
+- Inicia Vite en el puerto 5173 accesible públicamente.
+👉 Abre en tu navegador: http://<IP_INSTANCIA_3>:5173
 
 ----------------------------------------------------------------------
-ACCESO Y PRUEBAS DEL SISTEMA
+PASO 4: INSTANCIA 4 (n8n + ngrok)
 ----------------------------------------------------------------------
-1. Abre tu navegador e ingresa a:
-   http://<IP_PUBLICA_INSTANCIA_3>:5173
+Conéctate por SSH o consola a la Instancia 4 y ejecuta:
 
-2. Inicia sesión con las credenciales cargadas por defecto:
+1- git clone https://github.com/mildred93-code/ProyectoTaller.git
+2- cd ProyectoTaller/scripts
+3- bash setup-n8n.sh
+
+¿Qué hace este script?
+- Te pedirá la IP de la Instancia 1 (Base de Datos) para tenerla a la mano en n8n.
+- Te pedirá tu Authtoken y dominio de ngrok (o Enter para usar el predeterminado).
+- Configura 1 GB de Swap y limpia temporales para que n8n se instale sin agotar la RAM ni el disco.
+- Instala Node.js 22, n8n y ngrok.
+- Importa automáticamente el flujo 'My workflow Farmacia.json'.
+- Inicia n8n en el puerto 5678 y ngrok apuntando al túnel seguro HTTPS para Telegram.
+👉 Abre en tu navegador: http://<IP_INSTANCIA_4>:5678
+
+----------------------------------------------------------------------
+ACCESO Y CREDENCIALES DEL SISTEMA
+----------------------------------------------------------------------
+1. Aplicación Web de Farmacia:
+   - URL: http://<IP_PUBLICA_INSTANCIA_3>:5173
    - Usuario:    admin@farmacia.com
    - Contraseña: admin123
 
-3. Para configurar tu flujo de automatización con Telegram e IA:
-   - Abre en tu navegador: http://<IP_PUBLICA_INSTANCIA_2>:5678
-   - Entra a n8n, importa tu workflow e inicia tus flujos.
+2. Automatización n8n:
+   - URL: http://<IP_PUBLICA_INSTANCIA_4>:5678
+   - Túnel ngrok para Telegram: https://<TU_DOMINIO>.ngrok-free.dev
+
+3. Conexión de PostgreSQL dentro de n8n:
+   - Host:     <IP_INSTANCIA_1>
+   - Puerto:   5432
+   - Database: farmacia_inventario
+   - Usuario:  farmacia_user
+   - Password: admin123
